@@ -11,6 +11,7 @@ module noahmp_const
   integer, parameter :: r8 = C_DOUBLE
   real(r8), parameter :: nan8 = transfer(-2251799813685248_i8, 1.0_r8)
   real(r4), parameter :: nan4 = transfer(-4194304_i4, 1.0_r4)
+  real(r4), parameter :: MPE = 1.0E-6       !prevents division by zero erros
 
   !%% Physical Constants
   real(r4), parameter :: GRAV   = 9.80616   !acceleration due to gravity (m/s2)

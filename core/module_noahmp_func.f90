@@ -88,11 +88,7 @@ contains
        BGAP    , WGAP    , CHV     , CHB     , EMISSI  ,           & ! OUT :
        SHG     , SHC     , SHB     , EVG     , EVB     , GHV     , & ! OUT :
        GHB     , IRG     , IRC     , IRB     , TR      , EVC     , & ! OUT :
-       CHLEAF  , CHUC    , CHV2    , CHB2    , FPICE               &
-#ifdef WRF_HYDRO
-       ,SFCHEADRT                                                  & ! IN/OUT :
-#endif
-       )
+       CHLEAF  , CHUC    , CHV2    , CHB2    , FPICE)
     ! Initial code: Guo-Yue Niu, Oct. 2007
     use noahmp_gen_param, only: KK_CSOIL
     use noahmp_gen_param, only: KK_ZBOT
@@ -142,10 +138,6 @@ contains
     real                           , intent(in)    :: DX
     real                           , intent(in)    :: SHDMAX  !yearly max vegetation fraction
     !jref:end
-
-#ifdef WRF_HYDRO
-    real                           , intent(inout) :: sfcheadrt
-#endif
 
     ! input/output : need arbitary intial values
     real                           , intent(inout) :: QSNOW  !snowfall [mm/s]
@@ -438,11 +430,7 @@ contains
          soilice   ,ZWT    ,WA     ,WT     ,DZSNSO ,WSLAKE , & !inout
          CMC    ,ECAN   ,ETRAN  ,FWET   ,runsrf ,runsub , & !out
          QIN    ,QDIS   ,QSNOW  ,PONDING1       ,PONDING2,&
-         QSNBOT,FPICE                             &
-#ifdef WRF_HYDRO
-         ,sfcheadrt                     &
-#endif
-         )  !out
+         QSNBOT,FPICE)  !out
 
     !     write(*,'(a20,10F15.5)') 'SFLX:RUNOFF=',runsrf*DT,runsub*DT,EDIR*DT
 
@@ -738,25 +726,6 @@ contains
           END_WB = END_WB + SMC(IZ) * DZSNSO(IZ) * 1000.0
        end do
        ERRWAT = END_WB - BEG_WB - (PRCP - ECAN - ETRAN - EDIR - runsrf - runsub) * DT
-
-#ifndef WRF_HYDRO
-       if (abs(ERRWAT) > 0.1) then
-          if (ERRWAT > 0) then
-             call wrf_message ('The model is gaining water (ERRWAT is positive)')
-          else
-             call wrf_message('The model is losing water (ERRWAT is negative)')
-          end if
-          write(message, *) 'ERRWAT =',ERRWAT, "kg m{-2} timestep{-1}"
-          call wrf_message(trim(message))
-          write(message, &
-               '("    I      J     END_WB     BEG_WB       PRCP       ECAN       EDIR      ETRAN      runsrf     runsub")')
-          call wrf_message(trim(message))
-          write(message,'(i6,1x,i6,1x,2f15.3,9f11.5)')ILOC,JLOC,END_WB,BEG_WB,PRCP*DT,ECAN*DT,&
-               EDIR*DT,ETRAN*DT,runsrf*DT,runsub*DT,ZWT
-          call wrf_message(trim(message))
-          call wrf_error_fatal("water budget problem in NOAHMP LSM")
-       end if
-#endif
     else                 !KWM
        ERRWAT = 0.0      !KWM
     end if
@@ -1150,14 +1119,14 @@ contains
     if (IST ==1 ) then
        do IZ = 1, LK_NROOT(lutyp)
           if (opt_btr == 1) then                  ! Noah
-             GX    = (soilwat(IZ) - LK_SMCWLT(sltyp)) / (LK_SMCREF(sltyp) - LK_SMCWLT(sltyp))
+             GX    = (soilwat(IZ) - LK_SMCWLT(sltyp)) / (LK_SMCREF(sltyp) - (LK_SMCWLT(sltyp)))
           end if
           if (opt_btr == 2) then                  ! CLM
-             PSI   = max(PSIWLT, -LK_PSISAT(sltyp) * (max(0.01, soilwat(IZ)) / LK_SMCMAX(sltyp)) ** -LK_BEXP(sltyp))
+             PSI   = max(PSIWLT, -LK_PSISAT(sltyp) * (max(0.01, soilwat(IZ)) / LK_SMCMAX(sltyp)) ** (-LK_BEXP(sltyp)))
              GX    = (1.0 - PSI / PSIWLT) / (1.0 + LK_PSISAT(sltyp) / PSIWLT)
           end if
           if (opt_btr == 3) then                  ! SSiB
-             PSI   = max(PSIWLT, -LK_PSISAT(sltyp) * (max(0.01, soilwat(IZ)) / LK_SMCMAX(sltyp)) ** -LK_BEXP(sltyp))
+             PSI   = max(PSIWLT, -LK_PSISAT(sltyp) * (max(0.01, soilwat(IZ)) / LK_SMCMAX(sltyp)) ** (-LK_BEXP(sltyp)))
              GX    = 1.0 - exp(-5.8 * (log(PSIWLT / PSI)))
           end if
 
@@ -1190,7 +1159,7 @@ contains
        !    RSURF = FSNO * 1. + (1.-FSNO)* EXP(8.25-6.0  *BEVAP) !adjusted to decrease RSURF for wet soil
 
        if (soilwat(1) < 0.01 .and. snowh == 0.0) RSURF = 1.0E6
-       PSI   = -LK_PSISAT(sltyp) * (max(0.01, soilwat(1)) / LK_SMCMAX(sltyp)) ** -LK_BEXP(sltyp)
+       PSI   = -LK_PSISAT(sltyp) * (max(0.01, soilwat(1)) / LK_SMCMAX(sltyp)) ** (-LK_BEXP(sltyp))
        RHSUR = FSNO + (1.0 - FSNO) * exp(PSI * GRAV / (RVAP * TG))
     end if
 
@@ -2828,23 +2797,21 @@ contains
        ! stomatal resistance
        if (iter == 1) then
           if (opt_crs == 1) then  ! Ball-Berry
-             call stomata(lutyp,MPE   ,PARSUN ,FOLN  ,ILOC  , JLOC , & !in
-                  TV    ,ESTV  ,EAH    ,SFCTMP,SFCPRS, & !in
-                  O2AIR ,CO2AIR,IGS    ,BTRAN ,RB    , & !in
-                  RSSUN ,PSNSUN)                         !out
-
-             call stomata(lutyp,MPE   ,PARSHA ,FOLN  ,ILOC  , JLOC , & !in
-                  TV    ,ESTV  ,EAH    ,SFCTMP,SFCPRS, & !in
-                  O2AIR ,CO2AIR,IGS    ,BTRAN ,RB    , & !in
-                  RSSHA ,PSNSHA)                         !out
+             call stomata(lutyp, igs, sfctmp, sfcprs, parsun, tv, &
+                  &       eah, estv, o2air, co2air, foln, btran, &
+                  &       rb, rssun, psnsun)
+            
+             call stomata(lutyp, igs, sfctmp, sfcprs, parsha, tv, &
+                  &       eah, estv, o2air, co2air, foln, btran, &
+                  &       rb, rssha, psnsha)
           end if
 
           if (opt_crs == 2) then  ! Jarvis
-             call  CANRES(lutyp, PARSUN, TV, BTRAN, EAH, SFCPRS, & !in
+             call canres(lutyp, PARSUN, TV, BTRAN, EAH, SFCPRS, & !in
                   & RSSUN, PSNSUN, ILOC, JLOC)          !out
 
-             call  CANRES(lutyp, PARSHA, TV, BTRAN, EAH,SFCPRS, & !in
-                  RSSHA, PSNSHA, ILOC, JLOC)          !out
+             call canres(lutyp, PARSHA, TV, BTRAN, EAH,SFCPRS, & !in
+                  & RSSHA, PSNSHA, ILOC, JLOC)          !out
           end if
        end if
 
@@ -3352,7 +3319,7 @@ contains
     end if
 
     if (MOZG < 0.0) then
-       FHGNEW  = (1.0 - 15.0 * MOZG) ** -0.25
+       FHGNEW  = (1.0 - 15.0 * MOZG) ** (-0.25)
     else
        FHGNEW  = 1.0 + 4.7 * MOZG
     end if
@@ -3770,11 +3737,13 @@ contains
 
   end subroutine esat
 
-
-  subroutine stomata(lutyp  ,MPE     ,APAR    ,FOLN    ,ILOC    , JLOC, & !in
-       &              TV      ,EI      ,EA      ,SFCTMP  ,SFCPRS  , & !in
-       &              O2      ,CO2     ,IGS     ,BTRAN   ,RB      , & !in
-       &              RS      ,PSN)                                   !out
+  
+  subroutine stomata(lutyp, igs, sfctmp, sfcprs, apar, tv, &
+       &             ea, ei, o2, co2, foln, btran, &
+       &             rb, rs, psn)
+    use noahmp_const, only: MPE
+    use noahmp_const, only: RGAS
+    use noahmp_const, only: TFRZ
     use noahmp_veg_param, only: LK_C3PSN
     use noahmp_veg_param, only: LK_KC25
     use noahmp_veg_param, only: LK_AKC
@@ -3788,138 +3757,129 @@ contains
     use noahmp_veg_param, only: LK_FOLNMX
     implicit none
     ! input
-    integer,intent(in)  :: ILOC   !grid index
-    integer,intent(in)  :: JLOC   !grid index
-    integer,intent(in)  :: lutyp !vegetation physiology type
+    integer,intent(in) :: lutyp   !vegetation physiology type
 
-    real, intent(in)    :: IGS    !growing season index (0=off, 1=on)
-    real, intent(in)    :: MPE    !prevents division by zero errors
+    real(r4), intent(in) :: igs   !growing season index (0=off, 1=on)
 
-    real, intent(in)    :: TV     !foliage temperature (k)
-    real, intent(in)    :: EI     !vapor pressure inside leaf (sat vapor press at tv) (pa)
-    real, intent(in)    :: EA     !vapor pressure of canopy air (pa)
-    real, intent(in)    :: APAR   !par absorbed per unit lai (w/m2)
-    real, intent(in)    :: O2     !atmospheric o2 concentration (pa)
-    real, intent(in)    :: CO2    !atmospheric co2 concentration (pa)
-    real, intent(in)    :: SFCPRS !air pressure at reference height (pa)
-    real, intent(in)    :: SFCTMP !air temperature at reference height (k)
-    real, intent(in)    :: BTRAN  !soil water transpiration factor (0 to 1)
-    real, intent(in)    :: FOLN   !foliage nitrogen concentration (%)
-    real, intent(in)    :: RB     !boundary layer resistance (s/m)
+    real(r4), intent(in) :: sfctmp  !air temperature at reference height (k)
+    real(r4), intent(in) :: sfcprs  !air pressure at reference height (pa)
+    real(r4), intent(in) :: apar    !par absorbed per unit lai (w/m2)
+    real(r4), intent(in) :: tv      !foliage temperature (k)
+    real(r4), intent(in) :: ea      !vapor pressure of canopy air (pa)
+    real(r4), intent(in) :: ei      !vapor pressure inside leaf (sat vapor press at tv) (pa)
+    real(r4), intent(in) :: o2      !atmospheric o2 concentration (pa)
+    real(r4), intent(in) :: co2     !atmospheric co2 concentration (pa)
+    real(r4), intent(in) :: foln    !foliage nitrogen concentration (%)
+    real(r4), intent(in) :: btran   !soil water transpiration factor (0 to 1)
+    real(r4), intent(in) :: rb      !boundary layer resistance (s/m)
 
     ! output
-    real, intent(out)   :: RS     !leaf stomatal resistance (s/m)
-    real, intent(out)   :: PSN    !foliage photosynthesis (umol co2 /m2/ s) [always +]
-
-    ! in&out
-    real                :: RLB    !boundary layer resistance (s m2 / umol)
+    real(r4), intent(out) :: rs     !leaf stomatal resistance (s/m)
+    real(r4), intent(out) :: psn    !foliage photosynthesis (umol co2 /m2/ s) [always +]
 
     ! locals
-    real :: CI     !internal co2 (pa)
-    real, parameter :: CIERR = 5e-2  !threshold of terminating the bisection (Pa)
-    real :: CIHI, CILOW              !intermediate inner leaf CO2 pressure (Pa)
-    real :: FCIHI, FCILOW, FCI       !intermediate inner leaf CO2 pressure (Pa)
-    integer :: iter                  !iteration index
-    integer, parameter :: niter = 20 !number of iterations
+    real(r4) :: rlb    !boundary layer resistance (s m2 / umol)
 
-    real :: TC          !foliage temperature (degree Celsius)
-    real :: KC          !co2 Michaelis-Menten constant (pa)
-    real :: KO          !o2 Michaelis-Menten constant (pa)
-    real :: FNF         !foliage nitrogen adjustment factor (0 to 1)
-    real :: PPF         !absorb photosynthetic photon flux (umol photons/m2/s)
-    real :: CP          !co2 compensation point (pa)
-    real :: AWC         !intermediate calculation for wc
-    real :: VCMX        !maximum rate of carbonylation (umol co2/m2/s)
-    real :: J           !electron transport (umol co2/m2/s)
-    real :: CEA         !constrain ea or else model blows up
-    real :: CF          !s m2/umol -> s/m
+    real(r4) :: ci                        !internal co2 (pa)
+    real(r4), parameter :: CIERR = 5.0E-2 !threshold of terminating the bisection (Pa)
+    real(r4) :: cihigh, cilow             !intermediate inner leaf CO2 pressure (Pa)
+    real(r4) :: fcihigh, fcilow, fci      !intermediate inner leaf CO2 pressure (Pa)
+    integer :: iter                       !iteration index
+    integer, parameter :: NITER = 20      !number of iterations
 
-    real :: T
+    real(r4) :: tc          !foliage temperature (degree Celsius)
+    real(r4) :: kc          !co2 Michaelis-Menten constant (pa)
+    real(r4) :: ko          !o2 Michaelis-Menten constant (pa)
+    real(r4) :: fnf         !foliage nitrogen adjustment factor (0 to 1)
+    real(r4) :: ppf         !absorb photosynthetic photon flux (umol photons/m2/s)
+    real(r4) :: cp          !co2 compensation point (pa)
+    real(r4) :: awc         !intermediate calculation for wc
+    real(r4) :: vcmx        !maximum rate of carbonylation (umol co2/m2/s)
+    real(r4) :: j           !electron transport (umol co2/m2/s)
+    real(r4) :: cf          !s m2/umol -> s/m
 
     ! initialize RS=RSMAX and PSN=0 because will only do calculations
     ! for APAR > 0, in which case RS <= RSMAX and PSN >= 0
+    CF = sfcprs / (RGAS * sfctmp) * 1.0e06
+    rs = 1.0 / LK_BP(lutyp) * cf
+    psn = 0.0
+    ci = co2
 
-    CF = SFCPRS / (8.314 * SFCTMP) * 1.0e06
-    RS = 1.0 / LK_BP(lutyp) * CF
-    PSN = 0.0
-    CI = CO2
+    if (apar <= 0.0) return
 
-    if (APAR <= 0.0) return
-
-    FNF = min(FOLN / max(MPE, LK_FOLNMX(lutyp)), 1.0 )
-    TC  = TV - TFRZ
-    PPF = 4.6 * APAR
-    J   = PPF * LK_QE25(lutyp)
+    fnf = min(foln / max(MPE, LK_FOLNMX(lutyp)), 1.0 )
+    tc  = tv - TFRZ
+    ppf = 4.6 * apar
+    j   = ppf * LK_QE25(lutyp)
     ! F1 = AB ** ((BC - 25.0) / 10.0)
     ! KC  = KC25(lutyp) * F1(AKC(lutyp),TC)
     ! KO  = KO25(lutyp) * F1(AKO(lutyp),TC)
-    KC  = LK_KC25(lutyp) * LK_AKC(lutyp) ** ((TC - 25.0) / 10.0)
-    KO  = LK_KO25(lutyp) * LK_AKO(lutyp) ** ((TC - 25.0) / 10.0)
-    AWC = KC * (1.0 + O2 / KO)
-    CP  = 0.5 * KC / KO * O2 * 0.21
+    kc  = LK_KC25(lutyp) * LK_AKC(lutyp) ** ((tc - 25.0) / 10.0)
+    ko  = LK_KO25(lutyp) * LK_AKO(lutyp) ** ((tc - 25.0) / 10.0)
+    awc = kc * (1.0 + o2 / ko)
+    cp  = 0.5 * kc / ko * o2 * 0.21
     ! VCMX = VCMX25(lutyp) / F2(TC) * FNF * BTRAN * F1(AVCMX(lutyp),TC)
     ! F2 = 1.0 + EXP((-2.2E05 + 710.0 * (AB + 273.16)) / (8.314 * (AB + 273.16)))
-    VCMX = LK_VCMX25(lutyp) &
-         & / (1.0 + exp((-2.2E05 + 710.0 * (TC + TFRZ)) / (8.314 * (TC + TFRZ)))) &
-         & * FNF * BTRAN &
-         & * (LK_AVCMX(lutyp) ** ((TC - 25.0) / 10.0))
+    vcmx = LK_VCMX25(lutyp) &
+         & / (1.0 + exp((-2.2E05 + 710.0 * (tc + TFRZ)) / (8.314 * (tc + TFRZ)))) &
+         & * fnf * btran &
+         & * (LK_AVCMX(lutyp) ** ((tc - 25.0) / 10.0))
 
     ! rb: s/m -> s m**2 / umol
-    RLB = RB/CF
+    rlb = rb / cf
 
     ! endpoints of the search intervals
-    CIHI = 1.5 * CO2
-    CILOW = 0.0
+    cihigh = 1.5 * co2
+    cilow = 0.0
     do iter = 1, niter
-       CI = 0.5 * (CIHI + CILOW)
-       call ci2ci(CI, FCI, RS, PSN)
-       if (((CIHI - CILOW) <= CIERR) .or. abs(FCI - CI) <= MPE) then
+       ci = 0.5 * (cihigh + cilow)
+       call ci2ci(ci, fci, RS, PSN)
+       if (((cihigh - cilow) <= CIERR) .or. abs(fci - ci) <= MPE) then
           exit
-       elseif (FCI > CI) then
-          CILOW = CI
+       elseif (fci > ci) then
+          cilow = ci
        else
-          CIHI = CI
+          cihigh = ci
        end if
     end do
 
-    RS = RS*CF
+    rs = rs * cf
 
   contains
-    subroutine ci2ci(CI, FCI, RS, PSN)
-      !function for serching the fixed point of CI, that is CI = FCI(CI)
+    subroutine ci2ci(ci, fci, rs, psn)
+      !function for serching the fixed point of CI, that is CI = fci(CI)
       implicit none
-      real, intent(in) :: CI
-      real, intent(out) :: FCI
-      real, intent(out) :: RS
-      real, intent(out) :: PSN
-      real :: WC          !Rubisco limited photosynthesis (umol co2/m2/s)
-      real :: WJ          !light limited photosynthesis (umol co2/m2/s)
-      real :: WE          !export limited photosynthesis (umol co2/m2/s)
-      real :: CS          !co2 concentration at leaf surface (pa)
-      real :: A, B, C, Q  !intermediate calculations for RS
-      real :: R1, R2      !roots for RS
+      real(r4), intent(in) :: ci
+      real(r4), intent(out) :: fci
+      real(r4), intent(out) :: rs
+      real(r4), intent(out) :: psn
+      real(r4) :: wc          !Rubisco limited photosynthesis (umol co2/m2/s)
+      real(r4) :: wj          !light limited photosynthesis (umol co2/m2/s)
+      real(r4) :: we          !export limited photosynthesis (umol co2/m2/s)
+      real(r4) :: cs          !co2 concentration at leaf surface (pa)
+      real(r4) :: a, b, c, q  !intermediate calculations for RS
+      real(r4) :: r1, r2      !roots for RS
 
-      WJ = max(CI-CP, 0.0) * J / (CI + 2.0 * CP) * LK_C3PSN(lutyp) + J * (1.0 - LK_C3PSN(lutyp))
-      WC = max(CI-CP, 0.0) * VCMX / (CI + AWC) * LK_C3PSN(lutyp) + VCMX * (1.0 - LK_C3PSN(lutyp))
-      WE = 0.5 * VCMX * LK_C3PSN(lutyp) + 4000.0 * VCMX * CI / SFCPRS * (1.0  -LK_C3PSN(lutyp))
-      PSN = min(WJ, WC, WE) * IGS
+      wj = max(ci - cp, 0.0) * j / (ci + 2.0 * cp) * LK_C3PSN(lutyp) + j * (1.0 - LK_C3PSN(lutyp))
+      wc = max(ci - cp, 0.0) * vcmx / (ci + awc) * LK_C3PSN(lutyp) + vcmx * (1.0 - LK_C3PSN(lutyp))
+      we = 0.5 * vcmx * LK_C3PSN(lutyp) + 4000.0 * vcmx * ci / sfcprs * (1.0  -LK_C3PSN(lutyp))
+      psn = min(wj, wc, we) * igs
 
-      CS = max(CO2 - 1.37 * RLB * SFCPRS * PSN, MPE )
-      A = LK_MP(lutyp) * PSN * SFCPRS * EA / (CS * EI) + LK_BP(lutyp)
-      B = (LK_MP(lutyp) * PSN * SFCPRS / CS + LK_BP(lutyp)) * RLB - 1.0
-      C = -RLB
-      if (B >= 0.0) then
-         Q = -0.5 * (B + sqrt(B * B - 4.0 * A * C))
+      cs = max(co2 - 1.37 * rlb * sfcprs * psn, MPE )
+      a = LK_MP(lutyp) * psn * sfcprs * ea / (cs * ei) + LK_BP(lutyp)
+      b = (LK_MP(lutyp) * psn * sfcprs / cs + LK_BP(lutyp)) * rlb - 1.0
+      c = -rlb
+      if (b >= 0.0) then
+         q = -0.5 * (b + sqrt(b * b - 4.0 * a * c))
       else
-         Q = -0.5 * (B - sqrt(B * B - 4.0 * A * C))
+         q = -0.5 * (b - sqrt(b * b - 4.0 * a * c))
       end if
-      R1 = Q / A
-      R2 = C / Q
-      RS = max(R1, R2)
+      r1 = q / a
+      r2 = c / q
+      rs = max(r1, r2)
 
-      FCI = max(CS - PSN * SFCPRS * 1.65 * RS, 0.0)
+      fci = max(cs - psn * sfcprs * 1.65 * rs, 0.0)
     end subroutine ci2ci
-
   end subroutine stomata
 
 
@@ -4655,11 +4615,7 @@ contains
        soilice   ,ZWT    ,WA     ,WT     ,DZSNSO ,WSLAKE , & !inout
        CMC    ,ECAN   ,ETRAN  ,FWET   ,runsrf ,runsub , & !out
        QIN    ,QDIS   ,QSNOW  ,PONDING1       ,PONDING2,&
-       QSNBOT,FPICE                             &
-#ifdef WRF_HYDRO
-       ,sfcheadrt                     &
-#endif
-       )  !out
+       QSNBOT,FPICE)  !out
     !
     ! Code history:
     ! Initial code: Guo-Yue Niu, Oct. 2007
@@ -4755,10 +4711,6 @@ contains
 
     real, parameter ::  WSLMAX = 5000.      !maximum lake water storage (mm)
 
-#ifdef WRF_HYDRO
-    real,                         intent(inout)    :: sfcheadrt
-#endif
-
     ! initialize
 
     ETRANI(1:NSOIL) = 0.0
@@ -4823,10 +4775,6 @@ contains
     do IZ = 1, LK_NROOT(lutyp)
        ETRANI(IZ) = ETRAN * BTRANI(IZ) * 0.001
     end do
-
-#ifdef WRF_HYDRO
-    qinsrf = qinsrf + sfcheadrt / DT * 0.001  !sfcheadrt units (m)
-#endif
 
     ! lake/soil water balances
 
@@ -6618,7 +6566,7 @@ contains
     ! Matric potential at the layer above the water table
     S_NODE = min(1.0, SMC(IWT) / LK_SMCMAX(sltyp))
     S_NODE = max(S_NODE, real(0.01,KIND=8))
-    SMPFZ  = -LK_PSISAT(sltyp) * 1000.0 * S_NODE ** -LK_BEXP(sltyp)   ! m --> mm
+    SMPFZ  = -LK_PSISAT(sltyp) * 1000.0 * S_NODE ** (-LK_BEXP(sltyp))   ! m --> mm
     SMPFZ  = max(-120000.0, CMIC * SMPFZ)
 
     ! Recharge rate qin to groundwater
@@ -6793,7 +6741,7 @@ contains
 
     WROOT  = 0.0
     do J = 1, LK_NROOT(lutyp)
-       WROOT = WROOT + SMC(J) / SMCMAX *  DZSNSO(J) / -ZSOIL(LK_NROOT(lutyp))
+       WROOT = WROOT + SMC(J) / SMCMAX *  DZSNSO(J) / (-ZSOIL(LK_NROOT(lutyp)))
     end do
 
     call co2flux(NSNOW  ,NSOIL  ,lutyp ,IGS    ,DT     , & !in
