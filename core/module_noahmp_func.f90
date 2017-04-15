@@ -2807,11 +2807,9 @@ contains
           end if
 
           if (opt_crs == 2) then  ! Jarvis
-             call canres(lutyp, PARSUN, TV, BTRAN, EAH, SFCPRS, & !in
-                  & RSSUN, PSNSUN, ILOC, JLOC)          !out
+             call canres(lutyp, sfcprs, tv, parsun, eah, btran, rssun, psnsun)
 
-             call canres(lutyp, PARSHA, TV, BTRAN, EAH,SFCPRS, & !in
-                  & RSSHA, PSNSHA, ILOC, JLOC)          !out
+             call canres(lutyp, sfcprs, tv, parsha, eah, btran, rssha, psnsha)
           end if
        end if
 
@@ -3883,16 +3881,17 @@ contains
   end subroutine stomata
 
 
-  subroutine canres(lutyp, PAR, SFCTMP, RCSOIL, EAH, SFCPRS, & !in
-       & RC, PSN, ILOC, JLOC)           !out
+  subroutine canres(lutyp, sfcprs, tv, par, eah, btran, rs, psn)
     ! calculate canopy resistance which depends on incoming solar radiation,
     ! air temperature, atmospheric water vapor pressure deficit at the
     ! lowest model level, and soil moisture (preferably unfrozen soil
     ! moisture rather than total)
     !
-    ! source:  Jarvis (1976), Noilhan and Planton (1989, MWR), Jacquemin and
-    ! Noilhan (1990, BLM). Chen et al (1996, JGR, Vol 101(D3), 7251-7268),
-    ! eqns 12-14 and table 2 of sec. 3.1.2
+    ! References:
+    !     Jarvis, 1976, doi:10.1098/rstb.1976.0035
+    !     Noilhan and Planton, 1989, MWR, doi:10.1175/1520-0493(1989)117<0536:ASPOLS>2.0.CO;2
+    !     Jacquemin and Noilhan, 1990, BLM, doi:10.1007/BF00123180
+    !     Chen et al., 1996, JGR, doi:10.1029/95JD02165
     !
     !niu    USE module_Noahlsm_utility
     !
@@ -3904,61 +3903,51 @@ contains
     implicit none
     ! inputs
     integer, intent(in) :: lutyp !vegetation type
-    integer,                  intent(in)  :: ILOC   !grid index
-    integer,                  intent(in)  :: JLOC   !grid index
-    real,                     intent(in)  :: PAR    !par absorbed per unit sunlit lai (w/m2)
-    real,                     intent(in)  :: SFCTMP !canopy air temperature
-    real,                     intent(in)  :: SFCPRS !surface pressure (pa)
-    real,                     intent(in)  :: EAH    !water vapor pressure (pa)
-    real,                     intent(in)  :: RCSOIL !soil moisture stress factor
+    real(r4), intent(in) :: sfcprs  !surface pressure (pa)
+    real(r4), intent(in) :: par     !par absorbed per unit sunlit lai (w/m2)
+    real(r4), intent(in) :: tv      !foliage temperature (K) (FIXME: air or foliage?)
+    real(r4), intent(in) :: eah     !water vapor pressure (pa)
+    real(r4), intent(in) :: btran   !soil moisture stress factor
 
     !outputs
-    real,                     intent(out) :: RC     !canopy resistance per unit LAI
-    real,                     intent(out) :: PSN    !foliage photosynthesis (umolco2/m2/s)
+    real(r4), intent(out) :: rs     !canopy resistance per unit LAI
+    real(r4), intent(out) :: psn    !foliage photosynthesis (umolco2/m2/s)
 
     !local
-    real                                  :: RCQ
-    real                                  :: RCS
-    real                                  :: RCT
-    real                                  :: FF
-    real                                  :: Q2     !water vapor mixing ratio (kg/kg)
-    real                                  :: Q2SAT  !saturation Q2
-    real                                  :: DQSDT2 !d(Q2SAT)/d(T)
+    real(r4) :: rcs
+    real(r4) :: rcq
+    real(r4) :: rct
+    real(r4) :: ff
+    real(r4) :: q2     !water vapor mixing ratio (kg/kg)
+    real(r4) :: q2sat  !saturation Q2
+    real(r4) :: dqsdt2 !d(Q2SAT)/d(T)
 
-    ! initialize canopy resistance multiplier terms.
-    RC     = 0.0
-    RCS    = 0.0
-    RCT    = 0.0
-    RCQ    = 0.0
+    ! initialize canopy conductance multiplier terms.
+    rcs = 1.0
+    rct = 1.0
+    rcq = 1.0
 
     !  compute Q2 and Q2SAT
-
-    Q2 = 0.622 *  EAH  / (SFCPRS - 0.378 * EAH) !specific humidity [kg/kg]
-    Q2 = Q2 / (1.0 + Q2)                        !mixing ratio [kg/kg]
-
-    call CALHUM(SFCTMP, SFCPRS, Q2SAT, DQSDT2)
+    q2 = 0.622 * eah / (sfcprs - 0.378 * eah)   !specific humidity [kg/kg]
+    q2 = q2 / (1.0 + q2)                        !mixing ratio [kg/kg]
+    call calhum(tv, sfcprs, q2sat, dqsdt2)
 
     ! contribution due to incoming solar radiation
-
-    FF  = 2.0 * PAR / LK_RGL(lutyp)
-    RCS = (FF + LK_RSMIN(lutyp) / LK_RSMAX(lutyp)) / (1.0+ FF)
-    RCS = max (RCS, 0.0001)
+    ff  = 2.0 * par / LK_RGL(lutyp)  !FIXME: LAI? Chen 1996
+    rcs = (ff + LK_RSMIN(lutyp) / LK_RSMAX(lutyp)) / (1.0 + ff)
+    rcs = min(max(rcs, 0.0001), 1.0)
 
     ! contribution due to air temperature
-
-    RCT = 1.0 - 0.0016 * ((LK_TOPT(lutyp) - SFCTMP) ** 2.0)
-    RCT = max (RCT, 0.0001)
+    rct = 1.0 - 0.0016 * ((LK_TOPT(lutyp) - tv) ** 2)
+    rct = min(max(rct, 0.0001), 1.0)
 
     ! contribution due to vapor pressure deficit
-
-    RCQ = 1.0 / (1.0 + LK_HS(lutyp) * max(0.0, Q2SAT - Q2))
-    RCQ = max(RCQ, 0.01)
+    rcq = 1.0 / (1.0 + LK_HS(lutyp) * max(0.0, q2sat - q2))
+    rcq = min(max(rcq, 0.01), 1.0)
 
     ! determine canopy resistance due to all factors
-
-    RC  = LK_RSMIN(lutyp) / (RCS * RCT * RCQ * RCSOIL)
-    PSN = -999.99       ! PSN not applied for dynamic carbon
-
+    rs = LK_RSMIN(lutyp) / (rcs * rct * rcq * btran)
+    psn = nan4       ! PSN not applied for dynamic carbon
   end subroutine canres
 
 
