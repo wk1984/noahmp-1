@@ -1,0 +1,66 @@
+&SLOPE
+9     'SLOPE'
+1,      0.10
+2,      0.60
+3,      1.00
+4,      0.35
+5,      0.55
+6,      0.80
+7,      0.63
+8,      0.00
+9,      0.00
+
+&CSOIL
+2.00E+6
+
+&DKREF
+2.0E-6
+
+&KDTREF
+1.0
+
+&FRZK
+0.15
+
+&ZBOT
+-8.0
+
+&CZIL
+0.1
+
+&TIMEAN
+10.5
+
+&FSATMAX
+0.38
+
+&MLTFCT
+2.50
+
+&Z0SNO
+0.002
+
+&SSI
+0.03
+
+&SWEMAX
+1.00
+
+&ALBICE
+0.80, 0.55
+
+&ALBLAKE
+0.60, 0.40
+
+&OMEGAS
+0.80, 0.40
+&BETADS
+0.5
+&BETAIS
+0.5
+
+&EMSSOIL
+0.97
+
+&EMSLAKE
+0.98

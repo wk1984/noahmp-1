@@ -1,0 +1,38 @@
+&NOAHMP_OFFLINE
+  static_parameter_file = 'geo_em.d01.nc'
+  initialization_file = 'init.nc'
+  restart_file = 'restart.nc'
+
+  input_directory = 'ldasin'
+  input_frequency = '1 hour'
+  output_directory = 'ldasout'
+  output_frequency = '3 hour'
+  restart_directory = 'restart'
+  restart_frequency = '1 month'
+
+  start_year = 2000
+  start_month = 1
+  start_day = 1
+  start_hour = 0
+  start_minute = 0
+  start_second = 0
+
+  end_year= 2000
+  end_month = 1
+  end_day = 2
+  end_hour = 0
+  end_minute = 0
+  end_second = 0
+
+  interval_seconds = 900
+
+  opt_veg = 1
+  opt_run = 1
+  opt_btr = 1
+  opt_rad = 1
+  opt_tub = 1
+  opt_can = 1
+  opt_inf = 1
+  opt_tbot = 1
+  opt_snf = 1
+/
