@@ -2797,11 +2797,11 @@ contains
        ! stomatal resistance
        if (iter == 1) then
           if (opt_crs == 1) then  ! Ball-Berry
-             call stomata(lutyp, igs, sfctmp, sfcprs, parsun, tv, &
+             call stomata(lutyp, igs, sfcprs, sfctmp, parsun, tv, &
                   &       eah, estv, o2air, co2air, foln, btran, &
                   &       rb, rssun, psnsun)
             
-             call stomata(lutyp, igs, sfctmp, sfcprs, parsha, tv, &
+             call stomata(lutyp, igs, sfcprs, sfctmp, parsha, tv, &
                   &       eah, estv, o2air, co2air, foln, btran, &
                   &       rb, rssha, psnsha)
           end if
@@ -3738,7 +3738,7 @@ contains
   end subroutine esat
 
   
-  subroutine stomata(lutyp, igs, sfctmp, sfcprs, apar, tv, &
+  subroutine stomata(lutyp, igs, sfcprs, sfctmp, apar, tv, &
        &             ea, ei, o2, co2, foln, btran, &
        &             rb, rs, psn)
     use noahmp_const, only: MPE
@@ -3761,8 +3761,8 @@ contains
 
     real(r4), intent(in) :: igs   !growing season index (0=off, 1=on)
 
-    real(r4), intent(in) :: sfctmp  !air temperature at reference height (k)
     real(r4), intent(in) :: sfcprs  !air pressure at reference height (pa)
+    real(r4), intent(in) :: sfctmp  !air temperature at reference height (k)
     real(r4), intent(in) :: apar    !par absorbed per unit lai (w/m2)
     real(r4), intent(in) :: tv      !foliage temperature (k)
     real(r4), intent(in) :: ea      !vapor pressure of canopy air (pa)
