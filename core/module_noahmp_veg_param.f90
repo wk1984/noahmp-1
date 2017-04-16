@@ -51,7 +51,7 @@ module noahmp_veg_param
   real(r4) :: LK_RSMIN(MLUTYP)   = nan4!minimum Canopy Resistance [s/m]
   real(r4) :: LK_TOPT(MLUTYP)    = nan4!optimum transpiration air temperature.
 
-  real(r4) :: LK_C3PSN(MLUTYP)   = nan4!photosynthetic pathway: 0. = c4, 1. = c3
+  integer  :: LK_C3C4(MLUTYP)    =    0!photosynthetic pathway: 1 = c3, 2 = c4
   real(r4) :: LK_KC25(MLUTYP)    = nan4!co2 michaelis-menten constant at 25c (pa)
   real(r4) :: LK_AKC(MLUTYP)     = nan4!q10 for kc25
   real(r4) :: LK_KO25(MLUTYP)    = nan4!o2 michaelis-menten constant at 25c (pa)
@@ -143,7 +143,7 @@ contains
     call assert(nlutyp <= MLUTYP, 'Table PHOTO#'//trim(tag)//' is too big to be read')
     do ii = 1, nlutyp
        read(tblstr(ii), *, iostat=ierr) index, &
-            & LK_C3PSN(ii), LK_RGL(ii), LK_HS(ii), LK_KC25(ii), LK_AKC(ii), &
+            & LK_C3C4(ii), LK_RGL(ii), LK_HS(ii), LK_KC25(ii), LK_AKC(ii), &
             & LK_KO25(ii), LK_AKO(ii), LK_VCMX25(ii), LK_AVCMX(ii), LK_BP(ii), &
             & LK_RSMAX(ii), LK_RSMIN(ii), LK_MP(ii), LK_QE25(ii), LK_AQE(ii), &
             & LK_RMF25(ii), LK_RMS25(ii), LK_RMR25(ii), LK_FOLNMX(ii), LK_TOPT(ii), &

@@ -3081,7 +3081,7 @@ contains
     !jref:start
     real :: RAHB2      !aerodynamic resistance for sensible heat 2m (s/m)
     real :: RAWB2      !aerodynamic resistance for water vapor 2m (s/m)
-    real,intent(out) :: EHB2       !sensible heat conductance for diagnostics
+    real, intent(out) :: EHB2      !sensible heat conductance for diagnostics
     real :: CH2B       !exchange coefficient for 2m temp.
     real :: CQ2B       !exchange coefficient for 2m temp.
     real :: THVAIR     !virtual potential air temp
@@ -3742,7 +3742,7 @@ contains
     use noahmp_const, only: MPE
     use noahmp_const, only: RGAS
     use noahmp_const, only: TFRZ
-    use noahmp_veg_param, only: LK_C3PSN
+    use noahmp_veg_param, only: LK_C3C4
     use noahmp_veg_param, only: LK_KC25
     use noahmp_veg_param, only: LK_AKC
     use noahmp_veg_param, only: LK_KO25
@@ -3798,7 +3798,7 @@ contains
 
     ! initialize RS=RSMAX and PSN=0 because will only do calculations
     ! for APAR > 0, in which case RS <= RSMAX and PSN >= 0
-    CF = sfcprs / (RGAS * sfctmp) * 1.0e06
+    cf = sfcprs / (RGAS * sfctmp) * 1.0e06
     rs = 1.0 / LK_BP(lutyp) * cf
     psn = 0.0
     ci = co2
@@ -3851,16 +3851,22 @@ contains
       real(r4), intent(out) :: fci
       real(r4), intent(out) :: rs
       real(r4), intent(out) :: psn
-      real(r4) :: wc          !Rubisco limited photosynthesis (umol co2/m2/s)
-      real(r4) :: wj          !light limited photosynthesis (umol co2/m2/s)
-      real(r4) :: we          !export limited photosynthesis (umol co2/m2/s)
+      real(r4) :: wc = nan4   !Rubisco limited photosynthesis (umol co2/m2/s)
+      real(r4) :: wj = nan4   !light limited photosynthesis (umol co2/m2/s)
+      real(r4) :: we = nan4   !export limited photosynthesis (umol co2/m2/s)
       real(r4) :: cs          !co2 concentration at leaf surface (pa)
       real(r4) :: a, b, c, q  !intermediate calculations for RS
       real(r4) :: r1, r2      !roots for RS
 
-      wj = max(ci - cp, 0.0) * j / (ci + 2.0 * cp) * LK_C3PSN(lutyp) + j * (1.0 - LK_C3PSN(lutyp))
-      wc = max(ci - cp, 0.0) * vcmx / (ci + awc) * LK_C3PSN(lutyp) + vcmx * (1.0 - LK_C3PSN(lutyp))
-      we = 0.5 * vcmx * LK_C3PSN(lutyp) + 4000.0 * vcmx * ci / sfcprs * (1.0  -LK_C3PSN(lutyp))
+      if (LK_C3C4(lutyp) == 1) then ! C3
+        wj = max(ci - cp, 0.0) * j / (ci + 2.0 * cp)
+        wc = max(ci - cp, 0.0) * vcmx / (ci + awc)
+        we = 0.5 * vcmx
+      elseif (LK_C3C4(lutyp) == 2) then  ! C4
+        wj = j
+        wc = vcmx
+        we = 4000.0 * vcmx * ci / sfcprs
+      end if
       psn = min(wj, wc, we) * igs
 
       cs = max(co2 - 1.37 * rlb * sfcprs * psn, MPE )
@@ -3892,8 +3898,6 @@ contains
     !     Noilhan and Planton, 1989, MWR, doi:10.1175/1520-0493(1989)117<0536:ASPOLS>2.0.CO;2
     !     Jacquemin and Noilhan, 1990, BLM, doi:10.1007/BF00123180
     !     Chen et al., 1996, JGR, doi:10.1029/95JD02165
-    !
-    !niu    USE module_Noahlsm_utility
     !
     use noahmp_veg_param, only: LK_RGL
     use noahmp_veg_param, only: LK_RSMAX

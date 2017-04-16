@@ -16,7 +16,7 @@ module noahmp_const
   !%% Physical Constants
   real(r4), parameter :: GRAV   = 9.80616   !acceleration due to gravity (m/s2)
   real(r4), parameter :: SB     = 5.67E-8   !Stefan-Boltzmann constant (w/m2/k4)
-  real(r4), parameter :: RGAS   = 8.314     !univ. gas constant [J K-1 mol-1]
+  real(r4), parameter :: RGAS   = 8.3144598 !univ. gas constant [J K-1 mol-1]
   real(r4), parameter :: KARMAN = 0.40      !von Karman constant
   real(r4), parameter :: TFRZ   = 273.15    !freezing/melting point (k)
   real(r4), parameter :: TTRI   = 273.16    !triple point (K)
