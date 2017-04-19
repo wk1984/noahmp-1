@@ -14,14 +14,14 @@ module noahmp_global
 
   !%% Noah-MP Options
   ! options for dynamic vegetation
-  integer :: opt_dveg    != 4   !
+  integer :: opt_veg    != 4   !
   ! 1 -> off (use table LAI; use fveg = SHDFAC from input)
   ! 2 -> on (together with OPT_CRS = 1)
   ! 3 -> off (use table LAI; calculate fveg)
   ! 4 -> off (use table LAI; use maximum vegetation fraction)
 
   ! options for canopy stomatal resistance
-  integer :: opt_crs != 1    !(must 1 when OPT_DVEG = 2)
+  integer :: opt_crs != 1    !(must 1 when opt_veg = 2)
   ! 1-> Ball-Berry; 2->Jarvis
 
   ! options for soil moisture factor for stomatal resistance
@@ -74,13 +74,13 @@ module noahmp_global
   ! 1 -> semi-implicit; 2 -> full implicit (original Noah)
 
 contains
-  subroutine noahmp_set_options(iopt_dveg, iopt_crs, iopt_btr, &
+  subroutine noahmp_set_options(iopt_veg, iopt_crs, iopt_btr, &
        & iopt_run, iopt_sfc, iopt_frz, &
        & iopt_inf, iopt_rad, iopt_alb, &
        & iopt_snf, iopt_tbot, iopt_stc)
     implicit none
 
-    integer,  intent(in) :: iopt_dveg !dynamic vegetation (1 -> off ; 2 -> on) with opt_crs = 1
+    integer,  intent(in) :: iopt_veg !dynamic vegetation (1 -> off ; 2 -> on) with opt_crs = 1
     integer,  intent(in) :: iopt_crs  !canopy stomatal resistance (1-> Ball-Berry; 2->Jarvis)
     integer,  intent(in) :: iopt_btr  !soil moisture factor for stomatal resistance (1-> Noah; 2-> CLM; 3-> SSiB)
     integer,  intent(in) :: iopt_run  !runoff and groundwater (1->SIMGM; 2->SIMTOP; 3->Schaake96; 4->BATS)
@@ -95,7 +95,7 @@ contains
     integer,  intent(in) :: iopt_stc  !snow/soil temperature time scheme (only layer 1)
     ! 1 -> semi-implicit; 2 -> full implicit (original Noah)
 
-    opt_dveg = iopt_dveg
+    opt_veg = iopt_veg
 
     opt_crs  = iopt_crs
     opt_btr  = iopt_btr

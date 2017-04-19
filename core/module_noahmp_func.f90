@@ -306,7 +306,7 @@ contains
     logical                             :: FROZEN_CANOPY ! used to define latent heat pathway
 
     ! INTENT (out) variables need to be assigned a value.  These normally get assigned values
-    ! only if opt_dveg == 2.
+    ! only if opt_veg == 2.
     nee = 0.0
     npp = 0.0
     gpp = 0.0
@@ -350,31 +350,31 @@ contains
          & HTOP, elai, esai, IGS)
 
     !input GVF should be consistent with LAI
-    !     if (opt_dveg == 1) THEN
+    !     if (opt_veg == 1) THEN
     !        fveg = SHDFAC
     !        if (fveg <= 0.05) fveg = 0.05
-    !     ELSE IF (opt_dveg == 2 .or. opt_dveg == 3) THEN
+    !     ELSE IF (opt_veg == 2 .or. opt_veg == 3) THEN
     !        fveg = 1.-EXP(-0.52*(LAI+SAI))
     !        if (fveg <= 0.05) fveg = 0.05
-    !     ELSE IF (opt_dveg == 4) THEN
+    !     ELSE IF (opt_veg == 4) THEN
     !        fveg = SHDMAX
     !        if (fveg <= 0.05) fveg = 0.05
     !     ELSE
     !        WRITE(*,*) "-------- FATAL CALLED IN SFLX -----------"
-    !        CALL wrf_error_fatal("Namelist parameter opt_dveg unknown")
+    !        CALL wrf_error_fatal("Namelist parameter opt_veg unknown")
     !     ENDIF
-    if (opt_dveg == 1) then
+    if (opt_veg == 1) then
        fveg = SHDFAC
        if (fveg <= 0.01) fveg = 0.01
-    else if (opt_dveg == 2 .or. opt_dveg == 3) then
+    else if (opt_veg == 2 .or. opt_veg == 3) then
        fveg = 1.0 - exp(-0.52 * (LAI + SAI))
        if (fveg <= 0.01) fveg = 0.01
-    else if (opt_dveg == 4 .or. opt_dveg == 5) then
+    else if (opt_veg == 4 .or. opt_veg == 5) then
        fveg = SHDMAX
        if (fveg <= 0.01) fveg = 0.01
     else
        write(*,*) "-------- FATAL CALLED IN SFLX -----------"
-       call wrf_error_fatal("Namelist parameter opt_dveg unknown")
+       call wrf_error_fatal("Namelist parameter opt_veg unknown")
     end if
     if (lutyp == ISURBAN .or. lutyp == ISBARREN) fveg = 0.0
     if (elai + esai == 0.0) fveg = 0.0
@@ -436,7 +436,7 @@ contains
 
     ! compute carbon budgets (carbon storages and co2 & bvoc fluxes)
 
-    if (opt_dveg == 2 .or. opt_dveg == 5) then
+    if (opt_veg == 2 .or. opt_veg == 5) then
        call carbon(NSNOW  ,NSOIL  ,lutyp, DT     ,ZSOIL  , & !in
             DZSNSO ,STC    ,SMC    ,TV     ,TG     ,PSN    , & !in
             FOLN   ,LK_SMCMAX(sltyp) ,BTRAN  ,APAR   ,fveg   ,IGS    , & !in
@@ -575,7 +575,7 @@ contains
     real                                   :: WT1,WT2 !interpolation weights
     real                                   :: T       !current month (1.00, ..., 12.00)
 
-    if ( opt_dveg == 1 .or. opt_dveg == 3 .or. opt_dveg == 4 ) then
+    if ( opt_veg == 1 .or. opt_veg == 3 .or. opt_veg == 4 ) then
 
        if (LAT >= 0.0) then
           ! Northern Hemisphere
@@ -2282,7 +2282,7 @@ contains
     real                              :: DENfveg
     real                              :: VAI_SPREAD
     !jref:start
-    real                              :: FREVEG,FREBAR,FTopt_dveg,FTIVEG,FTDBAR,FTIBAR
+    real                              :: FREVEG,FREBAR,FTopt_veg,FTIVEG,FTDBAR,FTIBAR
     real                              :: THETAZ
     !jref:end
 
